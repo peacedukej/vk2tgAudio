@@ -1,7 +1,7 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, UniqueConstraint, Index, Text, TIMESTAMP, func
 from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
 
-from postgres.models.database import Base
+#from postgres.models.database import Base
 from datetime import datetime
 
 class Base(DeclarativeBase):

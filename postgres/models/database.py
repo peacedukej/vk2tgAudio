@@ -11,4 +11,4 @@ SQLALCHEMY_DATABASE_URL = f"postgresql+asyncpg://{postgres_user}:{encoded_passwo
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
-Base = declarative_base()
+#Base = declarative_base()
