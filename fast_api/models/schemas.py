@@ -11,9 +11,12 @@ class NewVKUser(BaseModel):
     vk_id: int
     vk_name: str
     vk_surname: str
-    #vk_patronymic: str
     token: str
 
-# class GetUseData(BaseModel):
-#     main_email: str
-#     password: str
+class VKIsRegistered(BaseModel):
+    vk_id: int
+
+class NewFromVK(BaseModel):
+    vk_id: int
+    vk_name: str
+    vk_surname: str

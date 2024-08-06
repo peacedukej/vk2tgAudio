@@ -11,7 +11,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
-    token = Column(String, nullable=True)
+    token = Column(String, nullable=True, unique=True)
 
     tg_id = Column(Integer, nullable=True)
     tg_name = Column(String, nullable=True)
@@ -20,4 +20,3 @@ class User(Base):
     vk_id = Column(Integer, nullable=True)
     vk_name = Column(String, nullable=True)
     vk_surname = Column(String, nullable=True)
-    #vk_patronymic = Column(String, nullable=True)

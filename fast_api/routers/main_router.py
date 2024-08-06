@@ -64,3 +64,23 @@ async def new_vk_user(new_vk_user_data: schemas.NewVKUser, db: AsyncSession = De
 
     await db.execute(new_vk_user_data_insert)
     await db.commit()
+
+@router.get("/vk_is_registered")
+async def vk_is_registered(vk_id: int, db: AsyncSession = Depends(get_db)):
+    vk_user_select = await db.execute(select(User).where(User.vk_id == vk_id))
+    vk_user_select_result = vk_user_select.scalars().first()
+    if not vk_user_select_result:
+        raise HTTPException(status_code=404)
+
+
+@router.get("/validate_token")
+async def validate_token(token: str, db: AsyncSession = Depends(get_db)):
+    token_select = await db.execute(select(User).where(User.token == token))
+    token_select_result = token_select.scalars().first()
+    if not token_select_result:
+        raise HTTPException(status_code=404)
+
+@router.post("/new_from_vk")
+async def new_from_vk(data: schemas.NewFromVK, db: AsyncSession = Depends(get_db)):
+    await db.execute(insert(User).values(vk_id=data.vk_id, vk_name=data.vk_name, vk_surname=data.vk_surname))
+    await db.commit
