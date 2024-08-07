@@ -13,10 +13,10 @@ class NewVKUser(BaseModel):
     vk_surname: str
     token: str
 
-class VKIsRegistered(BaseModel):
-    vk_id: int
+# class VKIsRegistered(BaseModel):
+#     vk_id: int
 
-class NewFromVK(BaseModel):
-    vk_id: int
-    vk_name: str
-    vk_surname: str
+# class NewFromVK(BaseModel):
+#     vk_id: int
+#     vk_name: str
+#     vk_surname: str

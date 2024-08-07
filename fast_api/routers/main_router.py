@@ -8,18 +8,6 @@ from fast_api.controllers.connect_postgres import get_db
 
 router = APIRouter()
 
-# @router.post("/tokens/")
-# def create_token(user_data: schemas.UserData, db: AsyncSession = Depends(get_db)):
-#     db_token = User(access_token=user_data.access_token, user_id=user_data.user_id)
-#     db.add(db_token)
-#     db.commit()
-#     db.refresh(db_token)
-#     return db_token
-
-# @router.get("/tokens/{user_id}")
-# def read_token(user_id: int, db: AsyncSession = Depends(get_db)):
-#     return db.query(User).filter(User.user_id == user_id).first()
-
 @router.post("/new_telegram_user")
 async def new_tg_user(new_tg_user_data: schemas.NewTelegramUser, db: AsyncSession = Depends(get_db)):
     """
@@ -50,13 +38,6 @@ async def new_vk_user(new_vk_user_data: schemas.NewVKUser, db: AsyncSession = De
     Получаю выданный токен и данные пользователя из ВК
     """
 
-    token_select = select(User).where(User.token == new_vk_user_data.token)
-    token_select_query = await db.execute(token_select)
-    db_token_result = token_select_query.scalars().first()
-    db_token = db_token_result.token if db_token_result else None
-    if db_token is None:
-        raise HTTPException(status_code=404)
-
     new_vk_user_data_insert = update(User).where(User.token == new_vk_user_data.token).values(vk_id=new_vk_user_data.vk_id,
                                                                                             vk_name=new_vk_user_data.vk_name,
                                                                                             vk_surname=new_vk_user_data.vk_surname
@@ -64,23 +45,30 @@ async def new_vk_user(new_vk_user_data: schemas.NewVKUser, db: AsyncSession = De
 
     await db.execute(new_vk_user_data_insert)
     await db.commit()
-
-@router.get("/vk_is_registered")
-async def vk_is_registered(vk_id: int, db: AsyncSession = Depends(get_db)):
-    vk_user_select = await db.execute(select(User).where(User.vk_id == vk_id))
-    vk_user_select_result = vk_user_select.scalars().first()
-    if not vk_user_select_result:
-        raise HTTPException(status_code=404)
-
+    return {"response_status": 200}
 
 @router.get("/validate_token")
 async def validate_token(token: str, db: AsyncSession = Depends(get_db)):
     token_select = await db.execute(select(User).where(User.token == token))
-    token_select_result = token_select.scalars().first()
-    if not token_select_result:
-        raise HTTPException(status_code=404)
+    token_select_result = token_select.scalars().first() if token_select else None
+    if token_select_result is None:
+        return {"response_status": 404}
+    return {"response_status": 200}
 
-@router.post("/new_from_vk")
-async def new_from_vk(data: schemas.NewFromVK, db: AsyncSession = Depends(get_db)):
-    await db.execute(insert(User).values(vk_id=data.vk_id, vk_name=data.vk_name, vk_surname=data.vk_surname))
-    await db.commit
+@router.get("/validate_tg_id")
+async def validate_tg_id(vk_id: int, db: AsyncSession = Depends(get_db)):
+    tg_id_select = await db.execute(select(User).where(User.vk_id == vk_id))
+    tg_id_select_result = tg_id_select.scalars().first() if tg_id_select else None
+    if tg_id_select_result is None:
+        return {"response_status": 404}
+    return {"response_status": 200}
+
+@router.post("/send_audio")
+async def send_audio(vk_id: int, filename: str, db: AsyncSession = Depends(get_db)):
+    tg_id_select = await db.execute(select(User).where(User.vk_id == vk_id))
+    tg_id = tg_id_select.scalars().first() if tg_id_select else None
+
+    """
+    послать сообщение брокеру, которого слушает бот, отправить filename, tg_id
+    после этого удалить отправленный файл
+    """
