@@ -3,9 +3,10 @@ from sqlalchemy import select, insert, delete, update
 from fast_api.models.core import User
 from sqlalchemy.ext.asyncio import AsyncSession
 import fast_api.models.schemas as schemas # Импортируем созданную модель
-
+import aio_pika
+import json
 from fast_api.controllers.connect_postgres import get_db
-
+from config import RABBITMQ_URL
 router = APIRouter()
 
 @router.post("/new_telegram_user")
@@ -63,12 +64,35 @@ async def validate_tg_id(vk_id: int, db: AsyncSession = Depends(get_db)):
         return {"response_status": 404}
     return {"response_status": 200}
 
-@router.post("/send_audio")
-async def send_audio(vk_id: int, filename: str, db: AsyncSession = Depends(get_db)):
-    tg_id_select = await db.execute(select(User).where(User.vk_id == vk_id))
-    tg_id = tg_id_select.scalars().first() if tg_id_select else None
+# @router.post("/send_audio")
+# async def send_audio(vk_id: int, filename: str, db: AsyncSession = Depends(get_db)):
+#     tg_id_select = await db.execute(select(User).where(User.vk_id == vk_id))
+#     tg_id = tg_id_select.scalars().first() if tg_id_select else None
 
-    """
-    послать сообщение брокеру, которого слушает бот, отправить filename, tg_id
-    после этого удалить отправленный файл
-    """
+#     """
+#     послать сообщение брокеру, которого слушает бот, отправить filename, tg_id
+#     после этого удалить отправленный файл
+#     """
+
+@router.post("/send_audio")
+async def send_audio(audio_data: schemas.AudioData, db: AsyncSession = Depends(get_db)):
+    tg_id_select = await db.execute(select(User).where(User.vk_id == audio_data.vk_id))
+    tg_id = tg_id_select.scalars().first().tg_id if tg_id_select else None
+
+    if tg_id:
+        message = {"tg_id": tg_id, "filename": "music/"+audio_data.filename}
+        await send_to_rabbitmq(message)
+
+        # Логика удаления файла
+        # os.remove(filename)
+
+    return {"status": "success"}
+
+async def send_to_rabbitmq(message: dict):
+    connection = await aio_pika.connect_robust(RABBITMQ_URL)
+    async with connection:
+        channel = await connection.channel()
+        await channel.default_exchange.publish(
+            aio_pika.Message(body=json.dumps(message).encode()),
+            routing_key="telegram_queue"
+        )
