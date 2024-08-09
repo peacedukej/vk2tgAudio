@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy import select, insert, delete, update
-from fast_api.models.core import User
+from models.core import User
 from sqlalchemy.ext.asyncio import AsyncSession
-import fast_api.models.schemas as schemas # Импортируем созданную модель
+import models.schemas as schemas # Импортируем созданную модель
 import aio_pika
 import json
-from fast_api.controllers.connect_postgres import get_db
+from controllers.connect_postgres import get_db
 from config import RABBITMQ_URL
+RABBITURL = "http://rabbitmq:5672/"
 router = APIRouter()
 
 @router.post("/new_telegram_user")
@@ -80,16 +81,14 @@ async def send_audio(audio_data: schemas.AudioData, db: AsyncSession = Depends(g
     tg_id = tg_id_select.scalars().first().tg_id if tg_id_select else None
 
     if tg_id:
-        message = {"tg_id": tg_id, "filename": "music/"+audio_data.filename}
+        message = {"tg_id": tg_id, "filename": "music/"+audio_data.filename, "title": audio_data.title, "artist": audio_data.artist}
+        print(message)
         await send_to_rabbitmq(message)
-
-        # Логика удаления файла
-        # os.remove(filename)
 
     return {"status": "success"}
 
 async def send_to_rabbitmq(message: dict):
-    connection = await aio_pika.connect_robust(RABBITMQ_URL)
+    connection = await aio_pika.connect_robust(RABBITURL)
     async with connection:
         channel = await connection.channel()
         await channel.default_exchange.publish(

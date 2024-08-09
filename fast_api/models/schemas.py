@@ -16,10 +16,5 @@ class NewVKUser(BaseModel):
 class AudioData(BaseModel):
     vk_id: int
     filename: str
-# class VKIsRegistered(BaseModel):
-#     vk_id: int
-
-# class NewFromVK(BaseModel):
-#     vk_id: int
-#     vk_name: str
-#     vk_surname: str
+    title: str
+    artist: str

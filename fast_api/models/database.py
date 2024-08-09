@@ -11,9 +11,11 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 from config import postgress_password, postgres_user, server_name
 
 encoded_password = quote_plus(postgress_password)
-SQLALCHEMY_DATABASE_URL = f"postgresql+asyncpg://{postgres_user}:{encoded_password}@localhost:5432/{server_name}"
+SQLALCHEMY_DATABASE_URL = f"postgresql+asyncpg://{postgres_user}:{encoded_password}@db:5432/{server_name}"
 
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
 Base = declarative_base()
+# # Создание всех таблиц
+# Base.metadata.create_all(engine)

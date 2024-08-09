@@ -3,3 +3,5 @@ config.py
 __init__.py
 __pycache__
 music/
+.env
+postgres/pgdata

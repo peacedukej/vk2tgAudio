@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_service
+    ports:
+      - "15672:15672" # Порт для RabbitMQ management UI
+      - "5672:5672"   # Порт для подключения приложений
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - app_network
+
+  db:
+    image: postgres:13
+    container_name: postgres_service
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ./postgres/pgdata:/var/lib/postgresql/data
+      - ./postgres/init_db/:/docker-entrypoint-initdb.d/
+    networks:
+      - app_network
+
+  vk_bot:
+    build:
+      context: ./vk_bot
+      dockerfile: Dockerfile
+    container_name: vk_bot_service
+    restart: always
+    volumes:
+      - music:/app/music
+      - ./config.py:/app/config.py
+    networks:
+      - app_network
+    depends_on:
+      - db
+      - rabbitmq
+  
+  tg_bot:
+    build:
+      context: ./tg_bot
+      dockerfile: Dockerfile
+    container_name: tg_bot_service
+    restart: always
+    volumes:
+      - music:/app/music
+      - ./config.py:/app/config.py
+    environment:
+      - RABBITMQ_URL=${RABBITMQ_URL}
+    networks:
+      - app_network
+    depends_on:
+      - db
+      - rabbitmq
+  
+  fast_api:
+    build:
+      context: ./fast_api
+      dockerfile: Dockerfile
+    container_name: fast_api_service
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - music:/app/music
+      - ./config.py:/app/config.py
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+    networks:
+      - app_network
+    depends_on:
+      - db
+      - rabbitmq
+
+volumes:
+  postgres:
+  music:
+
+networks:
+  app_network:
+    driver: bridge

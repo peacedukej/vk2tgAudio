@@ -6,9 +6,10 @@ import asyncio
 import requests
 from vk_api.longpoll import VkLongPoll, VkEventType, VkLongpollMode
 
-from config import vk_token
+from config import vk_token, API_URL
+FAST_API_URL = "http://fast_api:9000/"
 
-API_URL = "http://localhost:8000/"
+#API_URL = "http://localhost:9000/"
 
 vk_session = vk_api.VkApi(token=vk_token)
 longpoll = VkLongPoll(vk_session)
@@ -39,11 +40,12 @@ async def get_vk_profile_info(vk_id: int) -> dict:
 async def get_audio_data(message_id: int) -> dict:
     response = requests.get(url=f"https://api.vk.com/method/messages.getById?message_ids={message_id}&access_token={vk_token}&v={5.199}")
     audio_data = response.json()["response"]["items"][0]["attachments"][0]["audio"]
-    #audio_data = audio_data["response"]["items"][0]["attachments"][0]["audio"]["url"]
     url = audio_data["url"]
     filename = (url.split("/")[-1]).split("?")[0]
-    print(filename)
-    return {"url": url, "filename": filename}
+    artist = audio_data["artist"] if audio_data["artist"] else "Неизвестен"
+    title = audio_data["title"] if audio_data["title"] else "Без названия"
+    #audio_name = artist + " – " + title
+    return {"url": url, "filename": filename, "title": title, "artist": artist}
 
 async def download_mp3(url, filename):
     async with aiohttp.ClientSession() as session:
@@ -63,11 +65,11 @@ async def db_response(type: str, router: str, data: dict) -> dict:
     try:
         async with aiohttp.ClientSession() as session:
             if type == 'post':
-                async with session.post(API_URL + router, json=data) as response:
+                async with session.post(FAST_API_URL + router, json=data) as response:
                     response_data = await response.json()
                     return response_data
             elif type == 'get':
-                async with session.get(API_URL + router, params=data) as response:
+                async with session.get(FAST_API_URL + router, params=data) as response:
                     response_data = await response.json()
                     return response_data
             else:
@@ -82,7 +84,6 @@ async def db_response(type: str, router: str, data: dict) -> dict:
 async def main() -> None:
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
-            #if event.to_me:
             id = event.user_id
             message_id = event.message_id
             print(message_id)
@@ -121,8 +122,8 @@ async def main() -> None:
                         audio_data = await get_audio_data(message_id=message_id)
                         if audio_data:
                             await download_mp3(url=audio_data["url"], filename=audio_data["filename"])
-                            await db_response(type='post', router='send_audio', data={"vk_id": id, "filename": audio_data["filename"]})
-                        await write_msg(event.user_id, "Загружено!")
+                            await db_response(type='post', router='send_audio', data={"vk_id": id, "filename": audio_data["filename"], "title": audio_data["title"], "artist": audio_data["artist"]})
+                            #await write_msg(event.user_id, data)
                 else:
                     await write_msg(event.user_id, "Ты прислал аудио, но ты еще не связал аккаунты.")
             else:

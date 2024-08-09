@@ -1,4 +1,4 @@
-from fast_api.models.database import SessionLocal, engine, Base
+from models.database import SessionLocal, engine, Base
 
 async def get_db(): 
     async with engine.begin() as connection:
