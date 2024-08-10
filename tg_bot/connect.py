@@ -11,13 +11,11 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message, FSInputFile
 
-from config import tg_token, RABBITMQ_URL, API_URL
+from config import tg_token, RABBITURL, FAST_API_URL
 from generate_token import generate_hex_token
 from api_listener import rabbitmq_listener
 
 TOKEN = tg_token
-FAST_API_URL = "http://fast_api:9000/"
-RABBITURL = "http://rabbitmq:5672/"
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 

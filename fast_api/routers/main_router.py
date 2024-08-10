@@ -6,8 +6,8 @@ import models.schemas as schemas # Импортируем созданную м�
 import aio_pika
 import json
 from controllers.connect_postgres import get_db
-from config import RABBITMQ_URL
-RABBITURL = "http://rabbitmq:5672/"
+from config import RABBITURL
+
 router = APIRouter()
 
 @router.post("/new_telegram_user")

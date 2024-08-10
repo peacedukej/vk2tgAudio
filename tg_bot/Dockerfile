@@ -9,5 +9,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-
-CMD ["sh", "-c", "sleep 30 && python -m connect"]
+CMD ["python", "-m", "connect"]
+#CMD ["sh", "-c", "sleep 30 && python -m connect"]

@@ -6,21 +6,26 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq_service
     ports:
-      - "15672:15672" # Порт для RabbitMQ management UI
-      - "5672:5672"   # Порт для подключения приложений
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      - "15672:15672"
+      - "5672:5672"
+    #environment:
+    #  RABBITMQ_DEFAULT_USER: guest
+    #  RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - app_network
 
   db:
     image: postgres:13
     container_name: postgres_service
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+    #environment:
+    #  POSTGRES_USER: ${POSTGRES_USER}
+    #  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    #  POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - ./postgres/pgdata:/var/lib/postgresql/data
       - ./postgres/init_db/:/docker-entrypoint-initdb.d/
@@ -48,11 +53,16 @@ services:
       dockerfile: Dockerfile
     container_name: tg_bot_service
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z rabbitmq_service 5672 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - music:/app/music
       - ./config.py:/app/config.py
-    environment:
-      - RABBITMQ_URL=${RABBITMQ_URL}
+    #environment:
+    #  - RABBITMQ_URL=${RABBITMQ_URL}
     networks:
       - app_network
     depends_on:
@@ -70,9 +80,9 @@ services:
     volumes:
       - music:/app/music
       - ./config.py:/app/config.py
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}
-      - RABBITMQ_URL=${RABBITMQ_URL}
+    #environment:
+    #  - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}
+    #  - RABBITMQ_URL=${RABBITMQ_URL}
     networks:
       - app_network
     depends_on:

@@ -6,10 +6,7 @@ import asyncio
 import requests
 from vk_api.longpoll import VkLongPoll, VkEventType, VkLongpollMode
 
-from config import vk_token, API_URL
-FAST_API_URL = "http://fast_api:9000/"
-
-#API_URL = "http://localhost:9000/"
+from config import vk_token, FAST_API_URL
 
 vk_session = vk_api.VkApi(token=vk_token)
 longpoll = VkLongPoll(vk_session)
@@ -39,18 +36,32 @@ async def get_vk_profile_info(vk_id: int) -> dict:
 
 async def get_audio_data(message_id: int) -> dict:
     response = requests.get(url=f"https://api.vk.com/method/messages.getById?message_ids={message_id}&access_token={vk_token}&v={5.199}")
-    audio_data = response.json()["response"]["items"][0]["attachments"][0]["audio"]
-    url = audio_data["url"]
-    filename = (url.split("/")[-1]).split("?")[0]
-    artist = audio_data["artist"] if audio_data["artist"] else "Неизвестен"
-    title = audio_data["title"] if audio_data["title"] else "Без названия"
-    #audio_name = artist + " – " + title
-    return {"url": url, "filename": filename, "title": title, "artist": artist}
+    if response.status_code == 200:
+        audio_data = response.json()["response"]["items"][0]["attachments"][0]["audio"]
+        url = audio_data["url"]
+        if url != "":
+            filename = (url.split("/")[-1]).split("?")[0]
+            artist = audio_data["artist"] if audio_data["artist"] else "Неизвестен"
+            title = audio_data["title"] if audio_data["title"] else "Без названия"
+            #audio_name = artist + " – " + title
+            return {"url": url, "filename": filename, "title": title, "artist": artist}
+        else:
+            return False
+    else:
+        return False
 
-async def download_mp3(url, filename):
+async def download_mp3(url, filename) -> bool:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             if response.status == 200:
+
+                # Проверяем наличие заголовка Content-Length
+                content_length = response.headers.get('Content-Length')
+                
+                if content_length and int(content_length) > 49 * 1024 * 1024:
+                    print(f"File {filename} is too large to download. Size: {int(content_length) / (1024 * 1024)} MB")
+                    return False
+
                 with open("music/"+filename, 'wb') as f:
                     while True:
                         chunk = await response.content.read(1024)
@@ -60,6 +71,7 @@ async def download_mp3(url, filename):
                 print(f"Downloaded {filename}")
             else:
                 print(f"Failed to download {url}, status code: {response.status}")
+            return True
 
 async def db_response(type: str, router: str, data: dict) -> dict:
     try:
@@ -117,13 +129,23 @@ async def main() -> None:
                     """
                     и если у него связаны аккаунты (для текущего vk_id есть tg_id)
                     """
-                    if event.attachments["attach1_type"] == "audio":
-                        await write_msg(event.user_id, "Начинаю загрузку!")
-                        audio_data = await get_audio_data(message_id=message_id)
-                        if audio_data:
-                            await download_mp3(url=audio_data["url"], filename=audio_data["filename"])
-                            await db_response(type='post', router='send_audio', data={"vk_id": id, "filename": audio_data["filename"], "title": audio_data["title"], "artist": audio_data["artist"]})
-                            #await write_msg(event.user_id, data)
+                    print("attachments: ", event.attachments)
+                    if "fwd" in event.attachments:
+                        await write_msg(event.user_id, "Я пока не умею обрабатывать пересланные сообщения. Отправь аудиозапись напрямую.")
+                        
+                    elif "attach1_type" in event.attachments:
+                        if event.attachments["attach1_type"] == "audio": 
+                            audio_data = await get_audio_data(message_id=message_id)
+                            if audio_data:
+                                if await download_mp3(url=audio_data["url"], filename=audio_data["filename"]):
+                                    await write_msg(event.user_id, "Начинаю загрузку!")
+                                    await db_response(type='post', router='send_audio', data={"vk_id": id, "filename": audio_data["filename"], "title": audio_data["title"], "artist": audio_data["artist"]})
+                                else: 
+                                    await write_msg(event.user_id, "Файл слишком большой (>50 MB)")
+                            else:
+                                await write_msg(event.user_id, "Файл недоступен для прослушивания и скачивания.")
+                    else:
+                        await write_msg(event.user_id, "Я пока не умею обрабатывать такие сообщения.")
                 else:
                     await write_msg(event.user_id, "Ты прислал аудио, но ты еще не связал аккаунты.")
             else:
