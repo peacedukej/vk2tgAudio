@@ -5,11 +5,13 @@ import aiohttp
 import aio_pika
 import json 
 
-from aiogram import Bot, Dispatcher, html
+from aiogram import Bot, Dispatcher, html, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message, FSInputFile, ReplyKeyboardRemove, \
+    ReplyKeyboardMarkup, KeyboardButton, \
+    InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import tg_token, RABBITURL, FAST_API_URL
 from generate_token import generate_hex_token
@@ -19,6 +21,10 @@ TOKEN = tg_token
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
+# @dp.callback_query_handler(func=lambda c: c.data == 'button1')
+# async def process_callback_button1(callback_query: types.CallbackQuery):
+#     await bot.answer_callback_query(callback_query.id)
+#     await bot.send_message(callback_query.from_user.id, 'Нажата первая кнопка!')
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
@@ -35,7 +41,10 @@ async def command_start_handler(message: Message) -> None:
     async with aiohttp.ClientSession() as session:
         async with session.post(FAST_API_URL + 'new_telegram_user', json=payload) as response:
             if response.status == 200:
-                await message.answer(f"Привет, {html.bold(user_name)}!\n\nТвой токен: {html.code(token)}\nПришли его в сообщения сообществу в VK.")
+                group_chat_button = InlineKeyboardButton(text="Открыть чат в VK", url="https://vk.com/im?media=&sel=-226902856")
+                group_chat = InlineKeyboardMarkup(inline_keyboard=[[group_chat_button]]) 
+                await message.answer(text=f"Привет, {html.bold(user_name)}!\n\nТвой токен:\n{html.code(token)}\nНажми на него, чтобы скопировать, и пришли его в сообщения сообществу в VK.",
+                                     reply_markup=group_chat)
             else:
                 await message.answer("Произошла ошибка. Попробуйте еще раз.")
 
